@@ -2,9 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 
 class Mapa extends StatefulWidget {
+
+  String idViagem;
+
+  Mapa({this.idViagem});
+
+
   @override
   _MapaState createState() => _MapaState();
 }
@@ -17,13 +24,14 @@ class _MapaState extends State<Mapa> {
       target: LatLng(-23.562436, -46.655005),
       zoom: 18
   );
+  Firestore _db = Firestore.instance;
 
   _onMapCreated( GoogleMapController controller ){
         _controller.complete(controller);
   }
 
 
-  _exibirMarcador(LatLng latLng) async{
+  _adicionarMarcador(LatLng latLng) async{
 
 
     List<Placemark> listaEnderecos = await Geolocator()
@@ -45,6 +53,16 @@ class _MapaState extends State<Mapa> {
 
       setState(() {
         _marcadores.add(marcadores);
+
+
+        //salvar no firebase
+        Map<String, dynamic> viagem = Map();
+        viagem["titulo"] = rua;
+        viagem["latitude"] = latLng.latitude;
+        viagem["longitude"] = latLng.longitude;
+
+        _db.collection("viagens").add(viagem);
+
       });
 
     }
@@ -84,10 +102,62 @@ class _MapaState extends State<Mapa> {
 
   }
 
+
+  _recuperaViagemPeloId(String idViagem)async{
+
+    if(idViagem != null){
+
+      //exibir marcador para id viagem
+      DocumentSnapshot documentSnapshot = await _db.collection("viagens")
+          .document(idViagem).get();
+
+      var dados = documentSnapshot.data;
+      String titulo = dados["titulo"];
+
+      LatLng latLng = LatLng(
+        dados["latitude"],
+        dados["longitude"]
+      );
+
+      setState(() {
+
+        Marker marcadores = Marker(
+            markerId: MarkerId("marcador-${latLng.latitude}-${latLng.longitude}"),
+            position: latLng,
+            infoWindow: InfoWindow(
+                title: titulo
+            )
+        );
+
+        _marcadores.add(marcadores);
+        _cameraPosition = CameraPosition(
+          target: latLng,
+              zoom: 18
+        );
+
+        _movimentarCamera();
+
+      });
+
+
+
+    }else{
+
+
+
+
+      _adicionarListnerLocalizacao();
+
+    }
+
+  }
+
+
   @override
   void initState() {
     super.initState();
-    _adicionarListnerLocalizacao();
+    //_adicionarListnerLocalizacao();
+    _recuperaViagemPeloId(widget.idViagem);
   }
 
   @override
@@ -100,8 +170,8 @@ class _MapaState extends State<Mapa> {
           mapType: MapType.normal,
           initialCameraPosition: _cameraPosition,
           onMapCreated: _onMapCreated,
-          onLongPress: _exibirMarcador,
-          myLocationEnabled: true,
+          onLongPress: _adicionarMarcador,
+          //myLocationEnabled: true,
         ),
       ),
     );
