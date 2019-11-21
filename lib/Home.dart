@@ -26,10 +26,21 @@ class _HomeState extends State<Home> {
 
   }
 
+  _adicionarLocal(){
+
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text("Minhas viagens"),),
+      floatingActionButton: FloatingActionButton(
+        child: Icon(Icons.add),
+        backgroundColor: Color(0xff0066cc),
+        onPressed: (){
+           _adicionarLocal();
+        },
+      ),
       body: Column(
         children: <Widget>[
           Expanded(
